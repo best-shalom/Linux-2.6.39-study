@@ -3,11 +3,13 @@
 
 /*
  * cloning flags:
+ * 这些标志定义了使用 clone 系统调用进行进程克隆时的各种选项，比如克隆后的子进程是否和父进程共享内存等
+ * clone也就是linux中的进程创建
  */
 #define CSIGNAL		0x000000ff	/* signal mask to be sent at exit */
-#define CLONE_VM	0x00000100	/* set if VM shared between processes */
-#define CLONE_FS	0x00000200	/* set if fs info shared between processes */
-#define CLONE_FILES	0x00000400	/* set if open files shared between processes */
+#define CLONE_VM	0x00000100	/* set if VM shared between processes VM:内存空间*/
+#define CLONE_FS	0x00000200	/* set if fs info shared between processes FS:文件系统信息 */
+#define CLONE_FILES	0x00000400	/* set if open files shared between processes Files:打开的文件描述符*/
 #define CLONE_SIGHAND	0x00000800	/* set if signal handlers and blocked signals shared */
 #define CLONE_PTRACE	0x00002000	/* set if we want to let tracing continue on the child too */
 #define CLONE_VFORK	0x00004000	/* set if the parent wants the child to wake it up on mm_release */
@@ -32,18 +34,22 @@
 
 /*
  * Scheduling policies
+ * 定义了各种进程调度策略
  */
-#define SCHED_NORMAL		0
-#define SCHED_FIFO		1
-#define SCHED_RR		2
-#define SCHED_BATCH		3
+#define SCHED_NORMAL		0  /*正常调度策略 */
+#define SCHED_FIFO		1  /* 先进先出（FIFO）实时调度策略 */
+#define SCHED_RR		2  /* 轮转（Round-Robin）实时调度策略 */
+#define SCHED_BATCH		3  /* 批处理调度策略 */
 /* SCHED_ISO: reserved but not implemented yet */
-#define SCHED_IDLE		5
+#define SCHED_IDLE		5  /* 空闲调度策略*/
 /* Can be ORed in to make sure the process is reverted back to SCHED_NORMAL on fork */
+/* 可以通过OR操作确保进程在fork后恢复为SCHED_NORMAL*/
 #define SCHED_RESET_ON_FORK     0x40000000
 
+/* #ifdef __KERNEL__ 指令确保这些定义仅在内核代码中可用，而不会暴露给用户空间应用程序。*/
 #ifdef __KERNEL__
 
+/* 这个结构体 (struct sched_param) 定义了进程的调度参数，目前只包括 sched_priority，表示进程的优先级。*/
 struct sched_param {
 	int sched_priority;
 };
@@ -92,7 +98,7 @@ struct sched_param {
 #include <linux/cred.h>
 
 #include <asm/processor.h>
-
+/* 声明了多个结构体的语句。在这段代码中，这些结构体被声明但没有被定义或初始化。它们通常在后续的代码中会被具体定义和使用。*/
 struct exec_domain;
 struct futex_pi_state;
 struct robust_list_head;
@@ -256,6 +262,7 @@ extern char ___assert_task_state[1 - 2*!!(
 extern rwlock_t tasklist_lock;
 extern spinlock_t mmlist_lock;
 
+/* 声明task_struct进程标识符结构*/
 struct task_struct;
 
 #ifdef CONFIG_PROVE_RCU
