@@ -1,3 +1,12 @@
+export KBUILD_CFLAGS := $(filter-out -fPIC -fPIE, $(KBUILD_CFLAGS) -fno-pic)
+export KBUILD_CFLAGS_KERNEL := $(filter-out -fPIC -fPIE, $(KBUILD_CFLAGS_KERNEL) -fno-pic)
+
+$(info KBUILD_CFLAGS=$(KBUILD_CFLAGS))
+$(info KBUILD_CFLAGS_KERNEL=$(KBUILD_CFLAGS_KERNEL))
+
+# 忽略特定警告
+KBUILD_CFLAGS += -Wno-frame-address -Wno-unused-variable
+
 VERSION = 2
 PATCHLEVEL = 6
 SUBLEVEL = 39

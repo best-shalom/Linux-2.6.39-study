@@ -1,4 +1,6 @@
 # Unified Makefile for i386 and x86_64
+KBUILD_CFLAGS += -fno-pic
+KBUILD_CFLAGS_KERNEL += -fno-pic
 
 # select defconfig based on actual architecture
 ifeq ($(ARCH),x86)

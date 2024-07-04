@@ -6,6 +6,13 @@
 # pnmttologo:    Convert pnm files to logo files
 # conmakehash:   Create chartable
 # conmakehash:	 Create arrays for initializing the kernel console tables
+c_flags := $(filter-out -fPIC -fPIE, $(c_flags) -fno-pic)
+a_flags := $(filter-out -fPIC -fPIE, $(a_flags) -fno-pic)
+
+# Debug information
+$(info c_flags=$(c_flags))
+$(info a_flags=$(a_flags))
+
 
 hostprogs-$(CONFIG_KALLSYMS)     += kallsyms
 hostprogs-$(CONFIG_LOGO)         += pnmtologo
