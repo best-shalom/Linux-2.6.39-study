@@ -455,6 +455,7 @@ static void __init mm_init(void)
 
 asmlinkage void __init start_kernel(void)
 {
+	printk(KERN_INFO "Custom message: Kernel is booting,YYYYYY Nice\n");
 	char * command_line;
 	extern const struct kernel_param __start___param[], __stop___param[];
 

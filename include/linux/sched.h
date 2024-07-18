@@ -1146,29 +1146,30 @@ struct sched_statistics {
 };
 #endif
 
+// 调度器实体结构，用于支持 Linux 内核中不同调度算法和机制的实现和优化。
 struct sched_entity {
-	struct load_weight	load;		/* for load-balancing */
-	struct rb_node		run_node;
-	struct list_head	group_node;
-	unsigned int		on_rq;
+	struct load_weight	load;		/* for load-balancing，它可能包含了一些权重信息，用来评估和调整系统中不同调度实体的负载情况。 */
+	struct rb_node		run_node;   /* 用于将当前调度实体连接到调度器的红黑树中，以支持高效的调度算法操作。*/
+	struct list_head	group_node; /* 用于将当前调度实体连接到调度组的链表中，通常用于组内调度管理。*/
+	unsigned int		on_rq;      /* 这是一个无符号整数，用来表示当前调度实体是否在运行队列上。可能用于标记调度实体当前是否处于可执行状态。*/
 
-	u64			exec_start;
-	u64			sum_exec_runtime;
-	u64			vruntime;
-	u64			prev_sum_exec_runtime;
+	u64			exec_start;         /* 这是一个64位无符号整数，用来记录调度实体的执行开始时间戳。通常用于统计和调度算法中的时间相关指标。*/
+	u64			sum_exec_runtime;   /* 记录调度实体累计的执行时间*/
+	u64			vruntime;           /* 用来记录调度实体的虚拟运行时间。在CFS（完全公平调度器）中，用于衡量调度实体相对于其他实体的优先级。*/
+	u64			prev_sum_exec_runtime; /* 记录上一个时刻调度实体的累计执行时间。通常用于计算实体在一个时间段内的执行时间变化。*/
 
-	u64			nr_migrations;
+	u64			nr_migrations;      /*记录调度实体的迁移次数。在多核系统中，调度实体可能会由一个处理器迁移到另一个处理器，这个字段用于统计迁移次数。*/
 
 #ifdef CONFIG_SCHEDSTATS
-	struct sched_statistics statistics;
+	struct sched_statistics statistics; /* 如果编译时开启了 CONFIG_SCHEDSTATS 宏定义，会包含一个 sched_statistics 结构体，用于统计调度器的各种统计信息。*/
 #endif
 
-#ifdef CONFIG_FAIR_GROUP_SCHED
-	struct sched_entity	*parent;
+#ifdef CONFIG_FAIR_GROUP_SCHED       /* 如果编译时开启了 CONFIG_FAIR_GROUP_SCHED 宏定义：*/
+	struct sched_entity	*parent;     /* 会包含一个指向父调度实体的指针 parent。这在调度实体层次结构中可能用于管理组内调度关系。*/
 	/* rq on which this entity is (to be) queued: */
-	struct cfs_rq		*cfs_rq;
+	struct cfs_rq		*cfs_rq;     /* 会包含一个指向 CFS 调度队列 cfs_rq 的指针。这个队列可能用于管理调度实体或者组的执行情况。*/
 	/* rq "owned" by this entity/group: */
-	struct cfs_rq		*my_q;
+	struct cfs_rq		*my_q;       /* 会包含一个指向当前调度实体或者组所拥有的调度队列 my_q 的指针。这个队列可能用于管理该实体或组的资源分配和执行情况。*/
 #endif
 };
 
