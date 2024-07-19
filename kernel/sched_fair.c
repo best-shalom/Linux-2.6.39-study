@@ -339,6 +339,10 @@ static inline s64 entity_key(struct cfs_rq *cfs_rq, struct sched_entity *se)
 	return se->vruntime - cfs_rq->min_vruntime;
 }
 
+/**
+ * 根据cfs中指向的调度器实体sched_entity，更新cfs中的进程加权运行时间
+ * @param cfs_rq cfs结构
+ */
 static void update_min_vruntime(struct cfs_rq *cfs_rq)
 {
 	u64 vruntime = cfs_rq->min_vruntime;
@@ -477,9 +481,13 @@ int sched_proc_update_handler(struct ctl_table *table, int write,
 static inline unsigned long
 calc_delta_fair(unsigned long delta, struct sched_entity *se)
 {
+	//NICE_0_LOAD：通常表示默认的负载权重，即优先级为0（正常优先级）时的权重。
 	if (unlikely(se->load.weight != NICE_0_LOAD))
+		//如果调度实体的负载权重不等于标准权重NICE_0_LOAD，则调用calc_delta_mine函数重新计算时间增量。
 		delta = calc_delta_mine(delta, NICE_0_LOAD, &se->load);
 
+	//se->load.weight == NICE_0_LOAD 时，调度实体的负载权重是默认值，表示它是标准优先级。
+	//由于权重没有变化，计算时间增量时不需要进一步加权处理。直接返回原始的 delta 值
 	return delta;
 }
 
@@ -549,33 +557,50 @@ static void update_cfs_shares(struct cfs_rq *cfs_rq);
  * Update the current task's runtime statistics. Skip current tasks that
  * are not in our scheduling class.
  */
+/**
+ * 更新完全公平调度器中当前进程的各种运行时间统计数据，包括最大执行时间、总执行时间、加权执行时间和虚拟运行时间。
+ * 同时，该函数在SMP和公平组调度配置下也会累加不可接受的执行时间。
+ * @param cfs_rq 指向cfs调度运行队列的指针
+ * @param curr 指向当前调度实体的指针
+ * @param delta_exec 当前调度实体执行的时间增量
+ */
 static inline void
 __update_curr(struct cfs_rq *cfs_rq, struct sched_entity *curr,
 	      unsigned long delta_exec)
 {
 	unsigned long delta_exec_weighted;
 
+	//更新当前进程的最大执行时间统计。如果当前的执行时间delta_exec大于之前的最大执行时间exec_max，则更新exec_max为delta_exec。
 	schedstat_set(curr->statistics.exec_max,
 		      max((u64)delta_exec, curr->statistics.exec_max));
 
+	//将进程的当前持续时间分别累加到调度器实体的总执行时间和cfs运行队列的exec_clock统计数据中
 	curr->sum_exec_runtime += delta_exec;
 	schedstat_add(cfs_rq, exec_clock, delta_exec);
+	//根据调度器实体记录的权重和可运行进程总数，计算当前进程运行的加权时间
 	delta_exec_weighted = calc_delta_fair(delta_exec, curr);
 
+	//将计算的加权时间累加到调度器实体的虚拟运行时间vruntime
 	curr->vruntime += delta_exec_weighted;
 	update_min_vruntime(cfs_rq);
 
+	//在启用了SMP（对称多处理器）和公平组调度配置的情况下，将执行时间增量delta_exec累加到CFS运行队列的不可接受执行时间load_unacc_exec_time中。
 #if defined CONFIG_SMP && defined CONFIG_FAIR_GROUP_SCHED
 	cfs_rq->load_unacc_exec_time += delta_exec;
 #endif
 }
 
+/**
+ * 更新当前正在运行的调度器实体的统计信息，包括运行时间和虚拟运行时间。以及更新进程和进程组的执行时间统计信息
+ * @param cfs_rq cfs调度器任务队列
+ */
 static void update_curr(struct cfs_rq *cfs_rq)
 {
+	//从cfs调度队列中获取当前正在执行的调度器实体
 	struct sched_entity *curr = cfs_rq->curr;
 	u64 now = rq_of(cfs_rq)->clock_task;
 	unsigned long delta_exec;
-
+	//如果当前没有正在执行的则跳过
 	if (unlikely(!curr))
 		return;
 
@@ -584,18 +609,26 @@ static void update_curr(struct cfs_rq *cfs_rq)
 	 * since the last time we changed load (this cannot
 	 * overflow on 32 bits):
 	 */
+	//根据当前时间，和调度器记录的自身最后一次修改的时间，计算当前调度器任务的运行时间
 	delta_exec = (unsigned long)(now - curr->exec_start);
+	//运行时间为 0，直接返回
 	if (!delta_exec)
 		return;
-
+	//将任务的执行时间统计到调度器和任务队列中
 	__update_curr(cfs_rq, curr, delta_exec);
+	//更新最后一次的修改时间
 	curr->exec_start = now;
 
+	//如果当前调度器实体是一个任务（进程）
 	if (entity_is_task(curr)) {
+		//根据调度器实体，找到任务对应的进程描述符实体
 		struct task_struct *curtask = task_of(curr);
 
+		//记录调度统计信息，包括进程运行时间 delta_exec 和虚拟运行时间 curr->vruntime到进程描述符
 		trace_sched_stat_runtime(curtask, delta_exec, curr->vruntime);
+		//将运行时间 delta_exec 计入进程的 CPU 账户统计中。
 		cpuacct_charge(curtask, delta_exec);
+		//将运行时间 delta_exec 计入进程所属组的执行时间统计中。
 		account_group_exec_runtime(curtask, delta_exec);
 	}
 }

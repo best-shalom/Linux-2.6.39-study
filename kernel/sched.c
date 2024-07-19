@@ -1301,30 +1301,47 @@ static void sched_avg_update(struct rq *rq)
 /*
  * delta *= weight / lw
  */
+/**
+ * 据调度实体的负载权重对时间增量进行精确的加权计算
+ * @param delta_exec 当前进程的实际执行时间
+ * @param weight 当前进程的权重
+ * @param lw 调度器实体中的权重结构指针
+ * @return
+ */
 static unsigned long
 calc_delta_mine(unsigned long delta_exec, unsigned long weight,
 		struct load_weight *lw)
 {
+	/**
+	 *inv_weight：负载权重的倒数，用于将实际执行时间 delta_exec 按权重进行调整。避免了直接使用除法带来的性能开销。
+	 *WMULT_CONST 和 WMULT_SHIFT：用于高效处理乘法和右移操作的常量。WMULT_CONST 是一个常量值，WMULT_SHIFT 表示右移的位数，以处理计算中的精度和范围问题。
+	 *溢出处理：在处理大数值时，检查和避免溢出，以确保计算的正确性。
+	 */
 	u64 tmp;
 
+	//检查是否已经计算了负载权重的倒数。如果没有计算，则需要计算并存储在 lw->inv_weight 中。
 	if (!lw->inv_weight) {
+		//如果系统位数大于32位且负载权重 lw->weight 大于等于 WMULT_CONST，则将倒数权重设置为1。这是因为当权重非常大时，计算倒数权重可能会导致精度问题。
 		if (BITS_PER_LONG > 32 && unlikely(lw->weight >= WMULT_CONST))
 			lw->inv_weight = 1;
+		//果权重较小，则按照公式 1 + (WMULT_CONST - lw->weight / 2) / (lw->weight + 1) 计算倒数权重 lw->inv_weight。
 		else
 			lw->inv_weight = 1 + (WMULT_CONST-lw->weight/2)
 				/ (lw->weight+1);
 	}
-
+	//计算加权后的时间增量
 	tmp = (u64)delta_exec * weight;
 	/*
 	 * Check whether we'd overflow the 64-bit multiplication:
+	 * 防止乘法溢出，如果可能溢出要将tmp缩小再计算
+	 * 如果没有溢出，则直接将 tmp 乘以 lw->inv_weight 并右移 WMULT_SHIFT 位，完成加权计算。
 	 */
 	if (unlikely(tmp > WMULT_CONST))
 		tmp = SRR(SRR(tmp, WMULT_SHIFT/2) * lw->inv_weight,
 			WMULT_SHIFT/2);
 	else
 		tmp = SRR(tmp * lw->inv_weight, WMULT_SHIFT);
-
+	// 将计算结果 tmp 转换为 unsigned long 类型，并返回结果。使用 min 函数确保返回值不会超过 LONG_MAX，以避免溢出问题。
 	return (unsigned long)min(tmp, (u64)(unsigned long)LONG_MAX);
 }
 
